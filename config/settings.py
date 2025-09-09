@@ -129,6 +129,21 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() in ("true", "1")
+ 
+
+
+ # Password hashing settings
+BCRYPT_SALT_ROUNDS = 12  
+
+# JWT settings
+JWT_ALGORITHM = 'HS256'  
+JWT_SECRET_KEY = 'your-secret-key-here' 
+JWT_PRIVATE_KEY = None
+JWT_PUBLIC_KEY = None   
+JWT_ACCESS_TOKEN_TTL = 15  # minutes
+JWT_REFRESH_TOKEN_TTL = 7  # days
+JWT_CLOCK_SKEW = 30  # seconds
+
 
 # Load environment definition file
 ENV_FILE = find_dotenv()

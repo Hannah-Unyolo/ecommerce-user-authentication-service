@@ -1,16 +1,35 @@
-from django.conf import settings
+import hmac
 
 import bcrypt
-def hash_password(password: str) -> str:
-    """Hash a password using bcrypt"""
+from django.conf import settings
+
+
+def hash_password(plain: str) -> str:
+    """Hash a password using bcrypt with configurable salt rounds"""
     salt_rounds = getattr(settings, 'BCRYPT_SALT_ROUNDS', 12)
     salt = bcrypt.gensalt(rounds=salt_rounds)
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    hashed = bcrypt.hashpw(plain.encode('utf-8'), salt)
     return hashed.decode('utf-8')
 
-def check_password(password: str, hashed: str) -> bool:
-    """Check if a password matches the hash"""
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+def verify_password(plain: str, hashed: str) -> bool:
+    """
+    Verify a password against a hash using timing-safe comparison
+    """
+    try:
+        # Use bcrypt's built-in timing-safe comparison
+        return bcrypt.checkpw(
+            plain.encode('utf-8'), 
+            hashed.encode('utf-8')
+        )
+    except (ValueError, TypeError):
+        # Handle invalid hash formats securely with constant-time comparison
+        # Compare with a dummy hash to prevent timing attacks
+        dummy_hash = bcrypt.hashpw(b"dummy_password", bcrypt.gensalt())
+        hmac.compare_digest(
+            hashed.encode('utf-8'), 
+            dummy_hash.decode('utf-8')
+        )
+        return False
 
 def hash_token(token: str) -> str:
     """Hash a token for secure storage"""

@@ -7,9 +7,19 @@ from jwt.exceptions import InvalidTokenError, ExpiredSignatureError
 class JWTManager:
     def __init__(self):
         self.algorithm = getattr(settings, 'JWT_ALGORITHM', 'HS256')
-        self.access_token_ttl = datetime.timedelta(minutes=15)
-        self.refresh_token_ttl = datetime.timedelta(days=7)
-        self.clock_skew = datetime.timedelta(seconds=30)
+        
+        # Configurable TTL with environment variables
+        self.access_token_ttl = datetime.timedelta(
+            minutes=getattr(settings, 'JWT_ACCESS_TOKEN_TTL', 15)
+        )
+        self.refresh_token_ttl = datetime.timedelta(
+            days=getattr(settings, 'JWT_REFRESH_TOKEN_TTL', 7)
+        )
+        
+        # Configurable clock skew
+        self.clock_skew = datetime.timedelta(
+            seconds=getattr(settings, 'JWT_CLOCK_SKEW', 30)
+        )
         
         if self.algorithm.startswith('RS'):
             self.private_key = getattr(settings, 'JWT_PRIVATE_KEY', None)
@@ -25,19 +35,33 @@ class JWTManager:
                 raise ValueError("HS256 algorithm requires a secret key")
 
     def sign_access(self, payload: Dict[str, Any]) -> str:
-        """Sign an access token with ~15m TTL"""
+        """Sign an access token with configurable TTL"""
         payload = payload.copy()
         payload['exp'] = datetime.datetime.utcnow() + self.access_token_ttl
         payload['type'] = 'access'
         
+        # Ensure required claims
+        if 'sub' not in payload:
+            raise ValueError("sub claim is required")
+        if 'role' not in payload:
+            raise ValueError("role claim is required")
+        if 'sid' not in payload:
+            raise ValueError("sid claim is required")
+            
         return self._sign(payload)
 
     def sign_refresh(self, payload: Dict[str, Any]) -> str:
-        """Sign a refresh token with ~7d TTL"""
+        """Sign a refresh token with configurable TTL"""
         payload = payload.copy()
         payload['exp'] = datetime.datetime.utcnow() + self.refresh_token_ttl
         payload['type'] = 'refresh'
         
+        # Ensure required claims
+        if 'sub' not in payload:
+            raise ValueError("sub claim is required")
+        if 'sid' not in payload:
+            raise ValueError("sid claim is required")
+            
         return self._sign(payload)
 
     def _sign(self, payload: Dict[str, Any]) -> str:
@@ -84,5 +108,4 @@ class JWTManager:
             }
         )
 
-# Create a singleton instance
 jwt_manager = JWTManager()
