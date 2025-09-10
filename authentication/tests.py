@@ -1,5 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+import json
 
 class Auth0IntegrationTests(TestCase):
     def setUp(self):
@@ -29,3 +30,41 @@ class Auth0IntegrationTests(TestCase):
         response = self.client.get(reverse("logout"))
         self.assertNotIn("user", self.client.session)
         self.assertEqual(response.status_code, 302)
+
+class ProfileAPITest(TestCase):
+    def setUp(self):
+        self.client = Client()
+        
+    def test_get_profile_without_session(self):
+        response = self.client.get('/profile/')
+        self.assertEqual(response.status_code, 401)
+        
+        data = response.json()
+        self.assertIn('error', data)
+        self.assertEqual(data['error'], 'No/invalid token')
+    
+    def test_get_profile_with_valid_session(self):
+        session = self.client.session
+        session['user'] = {
+            'access_token': 'access_token',
+            'id_token': 'id_token',
+            'userinfo': {
+                'id': '123456789',
+                'email': 'test@example.com',
+                'first_name': 'John',
+                'last_name': 'Doe',
+                'preferences': {},
+            }
+        }
+        session.save()
+        
+        response = self.client.get('/profile/')
+        self.assertEqual(response.status_code, 200)
+        
+        data = response.json()
+        self.assertEqual(data['email'], 'test@example.com')
+        self.assertEqual(data['firstName'], 'John')
+        self.assertEqual(data['lastName'], 'Doe')
+        self.assertEqual(data['id'], '123456789')
+        self.assertEqual(data['preferences'], {})
+        
