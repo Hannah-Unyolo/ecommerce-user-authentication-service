@@ -4,6 +4,8 @@ from django.conf import settings
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from urllib.parse import quote_plus, urlencode
+from django.http import JsonResponse  # Only need this one
+
 
 
 
@@ -71,3 +73,24 @@ def index(request):
             "pretty": json.dumps(request.session.get("user"), indent=4),
         },
     )
+    
+def profile(request):
+    user_session = request.session.get("user")
+    
+    if not user_session:
+        return JsonResponse(
+            {"error": "No/invalid token"}, 
+            status=401
+        )
+    
+    user_info = user_session.get("userinfo", {})
+    
+    response_data = {
+        "id": user_info.get("id"),
+        "email": user_info.get("email"),
+        "firstName": user_info.get("first_name", ""),
+        "lastName": user_info.get("last_name", ""),
+        "preferences": {}
+    }
+    
+    return JsonResponse(response_data, status=200)
